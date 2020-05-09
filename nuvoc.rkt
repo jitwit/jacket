@@ -47,7 +47,7 @@
 (define (group nodes)
   (let loop ((nodes nodes) (xs '()) (xss '()))
     (match nodes
-      ('() (reverse xss))
+      ('() (cons '*TOP* (reverse xss)))
       (`(,x ,nodes ...)
        (if (jdoc-entity? x)
          (loop nodes (list x) (cons (cons 'J1 (reverse xs)) xss))
@@ -70,25 +70,66 @@
 
 (define (J-speech td)
   (match td
-    (`(td (@ (style (*text* ,css)))
-          .
-          ,rem)
-     (list (cons (css->speech css) rem)))
-    (_ (list '(bug) td))))
+    (`(td (@ (style (*text* ,css))) . ,rem)
+     (cons (css->speech css) rem))
+    (`(td (@ ,row-span (style (*text* ,css))) . ,rem)
+     (cons (css->speech css) rem))
+    (_ '(bug-jspeech))))
+
+(define (clean-td td)
+  (match td
+    ('(td
+       (@ (style (*text* "border-left:none;border-right:none")))
+       (*text* "•\n"))
+     #f)
+    ('(td (*text* "•\n"))
+     #f)
+    (`(td (@ . ,atts) .
+          ,blah)
+     `(td ,@(filter (lambda (b)
+                      (not (or (equal? b '(*text* "  "))
+                               (equal? b '(*text* "\n"))
+                               (equal? b '(*text* ", ")))))
+                    blah)))
+    (_ td)))
 
 (define (J1->speech j1 . tds)
   (match tds
     ('() #f)
     (`(,td . ,tds)
-     `(J2 ,@(J-speech td) ,@tds))
-    (_ `(J2 ,@tds))))
+     `(J2 ,(J-speech td) ,@(filter-map clean-td tds)))
+    (_ `(bug-j1speech))))
+
+(define (parse-a a as . bod)
+  (match as
+    (`(@ . ,as)
+     `(about ;; mild danger in assuming cdr
+       (url ,@(cdr (assq 'href as)))
+       ,@bod))
+    (_ '(bug-parsea))))
 
 (define (parse2 nodes)
   (pre-post-order
-   nodes
+   ((compose (sxml:modify '("//br" delete))
+             (sxml:modify '("//p" delete-undeep)))
+    nodes)
    `((*text* . ,(lambda x x))
      (*default* . ,(lambda x x))
+     (a . ,parse-a)
      (J1 . ,J1->speech))))
+
+;;;; Parse main table. Pass 3
+;; Clean up td and tt nodes and whitespace text
+(define clean-tt-ws
+  (sxml:modify '("//tt" delete-undeep)))
+
+(define (parse3 nodes)
+  (pre-post-order
+   (clean-tt-ws (filter identity nodes))
+   `(
+     (J2 . ,(lambda x x))
+     (*text* . ,(lambda (_ x) x))
+     (*default* . ,(lambda x x)))))
 
 ;;;; 
 (define (dump-jdoc)
@@ -98,5 +139,6 @@
     (lambda ()
       (pretty-print ((compose parse2 parse1) nuvoc)))))
 
-
+(define parse
+  (compose parse2 parse1))
 
