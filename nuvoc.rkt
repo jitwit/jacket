@@ -22,17 +22,18 @@
            (sxpath '(// table))))
 
 (define jdoc-key
-  (filter-map (lambda (x)
-                (match x
-                  (`(td (@ (style ,css)) ,blah)
-                   (let ((speech-type (string-trim blah))
-                         (item-color (string-trim (last (string-split css ":")) ";")))
-                     (match speech-type
-                       ("KEY:" #f)
-                       ("" #f)
-                       (_  (cons item-color (string->symbol speech-type))))))
-                  (_ #f)))
-              (parse-key nuvoc)))
+  `(("#ffffff" . Comment)
+    ,@(filter-map (lambda (x)
+                    (match x
+                      (`(td (@ (style ,css)) ,blah)
+                       (let ((speech-type (string-trim blah))
+                             (item-color (string-trim (last (string-split css ":")) ";")))
+                         (match speech-type
+                           ("KEY:" #f)
+                           ("" #f)
+                           (_  (cons item-color (string->symbol speech-type))))))
+                      (_ #f)))
+                  (parse-key nuvoc))))
 
 ;;;; Parse the main table. Pass 1
 ;;; groups td's together that are identified as something J-relvant
@@ -97,7 +98,7 @@
   (match tds
     ('() #f)
     (`(,td . ,tds)
-     `(J2 ,(J-speech td) ,@(filter-map clean-td tds)))
+     `(J ,(J-speech td) ,@(filter-map clean-td tds)))
     (_ `(bug-j1speech))))
 
 (define (parse-a a as . bod)
@@ -118,20 +119,25 @@
      (a . ,parse-a)
      (J1 . ,J1->speech))))
 
-;;;; Parse main table. Pass 3
-;; Clean up td and tt nodes and whitespace text
-(define clean-tt-ws
-  (sxml:modify '("//tt" delete-undeep)))
+;;;; Pass 3. Clean up more random stuff and organize
+(define (clean-identifier speech . ids)
+  (cons speech (filter-map (lambda (id)
+                             (and (not (member id '("\n" " " " to ")))
+                                  (match id
+                                    (`(tt ,id) `(j-token ,id))
+                                    (_ id))))
+                           ids)))
 
 (define (parse3 nodes)
   (pre-post-order
-   (clean-tt-ws (filter identity nodes))
-   `(
-     (J2 . ,(lambda x x))
-     (*text* . ,(lambda (_ x) x))
-     (*default* . ,(lambda x x)))))
+   nodes
+   `((*text* . ,(lambda (_ x) x))
+     (*default* . ,(lambda x x))
+     ,@(map (lambda (speech)
+              (cons (cdr speech) clean-identifier))
+            jdoc-key))))
 
-;;;; 
+
 (define (dump-jdoc)
   (when (file-exists? "data/jdoc")
     (delete-file "data/jdoc"))
@@ -140,5 +146,5 @@
       (pretty-print ((compose parse2 parse1) nuvoc)))))
 
 (define parse
-  (compose parse2 parse1))
+  (compose parse3 parse2 parse1))
 
