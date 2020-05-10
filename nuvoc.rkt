@@ -144,6 +144,7 @@
 ;; space . seeems to imply a name
 ;; (define (tt->rank tt . ))
 (define (monad-rank-desc? desc)
+  ;; danger/todo: mv
   (member desc '("0" "1" "2" "_" "mu")))
 
 (define (dyad-rank-desc? desc)
@@ -190,13 +191,20 @@
      `((info (valence dyad) (rank ,mr ,dr) ,@i)))
     (`((monad-rank ,mr) (info . ,i))
      `((info (valence monad) (rank ,mr) ,@i)))
+    (`((info . ,i) (dyad-rank ,dr))
+     `((info (valence dyad) (rank ,dr) ,@i)))
+    ;; & (bug in mapping to monad-rank / dyad-rank tags, i believe)
+    (`((monad-rank ,mr) (info . ,i1) (dyad-rank ,dr) (tt ,mv) (info . ,i2) (dyad-rank ,mvmv))
+     `((info (valence monad) (rank ,mr) ,@i1)
+       (info (valence dyad) (rank ,dr) ,@i1)
+       (info (valence dyad) (rank ,mv ,mvmv) ,@i2)))
     ;; "
     (`(,info ,op (tt ,un) (info . ,i1) (tt ,mn) (info . ,i2) " , " (tt ,uv) (info . ,i3) ,cp)
      `(,info
        (info (valence dyad) (rank ,un) ,@i1)
        (info (valence dyad) (rank ,mn) ,@i2)
        (info (valence dyad) (rank ,uv) ,@i3)))
-    ;; ^:
+        ;;    ;; ^:
     (`((monad-rank ,mr) (info . ,info) (dyad-rank ,dr) ,op (info . ,i1) (info . ,i2) (info . ,i3) ,cp)
      `((info (valence monad) (rank ,mr) ,@info)
        (info (valence dyad) (rank ,dr) ,@i1)
@@ -206,10 +214,27 @@
     (`((monad-rank ,mr) (info ,url1 (description ,d1)) (info ,url2 (description ,d2)) (dyad-rank ,dr) ,seed)
      `((info (valence monad) (rank ,mr) ,url1 (description ,(string-trim (string-append d1 seed))))
        (info (valence dyad)  (rank ,dr) ,url2 (description ,(string-trim (string-append d2 seed))))))
+    ;; ^
+    (`((monad-rank ,mr) (info . ,mi) ,nl (info . ,i1) (dyad-rank ,dr1) (info . ,i2) (dyad-rank ,dr2))
+     `((info (valence monad) (rank ,mr) ,@mi)
+       (info (valence dyad) (rank ,dr1) ,@i1)
+       (info (valence dyad) (rank ,dr2) ,@i2)))
+    ;; |.
+    (`((monad-rank ,mr1) (info . ,i1) ,sp (monad-rank ,mr2) (info . ,i2) (info . ,i3) (dyad-rank ,dr1) ,sp (info . ,i4) (dyad-rank ,dr2))
+     `((info (valence monad) (rank ,mr1) ,@i1)
+       (info (valence monad) (rank ,mr2) ,@i2)
+       (info (valence dyad) (rank ,dr1) ,@i3)
+       (info (valence dyad) (rank ,dr2) ,@i4)))
+    ;; b. todo sort how better how to describe valence/bivalence
+    (`((monad-rank ,mr1) (info . ,i1) (info . ,i2) (info . ,i3) (dyad-rank ,dr) (monad-rank ,mr2) (info . ,i4))
+     `((info (valence dyad) (rank ,mr1 ,dr) ,@i1)
+       (info (valence dyad) (rank ,mr1 ,dr) ,@i2)
+       (info (valence dyad) (rank ,mr1 ,dr) ,@i3)
+       (info (valence dyad) (rank ,mr1 ,dr) ,@i4)))
     ;; :
     (`(,i1 ,op ,i2 ,i3 ,i4 ,cp)
      `(,i1 ,i2 ,i3 ,i4))
-    ;; todo ^ |.
+    ;; todo  C. d.
     (_ about)))
 
 (define (parse5 nodes)
@@ -218,7 +243,6 @@
    `((*text* . ,(lambda (_ x) x))
      (*default* . ,(lambda x x))
      (J . ,join-info))))
-
 
 (define (dump-jdoc)
   (when (file-exists? "data/jdoc")
