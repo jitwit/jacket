@@ -106,7 +106,7 @@
 (define (parse-a a as . bod)
   (match as
     (`(@ . ,as)
-     `(about ;; mild danger in assuming cdr
+     `(info ;; mild danger in assuming cdr
        (url ,@(cdr (assq 'href as)))
        (description ,@bod)))
     (_ '(bug-parse-a))))
@@ -160,10 +160,39 @@
 (define (parse4 nodes)
   ((sxml:modify '("//td" delete-undeep))
    (pre-post-order
-    nodes
+    (filter identity nodes)
     `((*text* . ,(lambda (_ x) x))
       (*default* . ,(lambda x x))
       (tt . ,tt->rank)))))
+
+;;;; Pass 5. Join rank descriptions and info items
+;; besides weird objects like rank ("), it seems 1 and 2 about tags
+;; can determine how to group a given J speech entity.
+(define (join-info J speech . about)
+  (match (car speech) ;; tag of speech
+    ('Verb `(J ,speech ,@(join-info* about)))
+    ('Conjunction `(J ,speech ,@(join-info* about)))
+    ('Adverb `(J ,speech ,@(join-info* about)))
+    (_ `(J ,speech ,@about))))
+
+(define (join-info* about)
+  (match about
+    (`((monad-rank ,mr) (info . ,mi) (info . ,di) (dyad-rank ,dr))
+     `((info (valence monad) (rank ,mr) ,@mi)
+       (info (valence dyad) (rank ,dr) ,@di)))
+    (`((monad-rank ,mr) (info . ,i) (dyad-rank ,dr))
+     `((info (valence monad) (rank ,mr) ,@i)
+       (info (valence dyad) (rank ,dr) ,@i)))
+    (`((monad-rank ,mr) (info . ,i))
+     `((info (valence monad) (rank ,mr) ,@i)))
+    (_ about)))
+
+(define (parse5 nodes)
+  (pre-post-order
+   nodes
+   `((*text* . ,(lambda (_ x) x))
+     (*default* . ,(lambda x x))
+     (J . ,join-info))))
 
 (define (dump-jdoc)
   (when (file-exists? "data/jdoc")
@@ -173,5 +202,5 @@
       (pretty-print ((compose parse2 parse1) nuvoc)))))
 
 (define parse
-  (compose parse4 parse3 parse2 parse1))
+  (compose parse5 parse4 parse3 parse2 parse1))
 
