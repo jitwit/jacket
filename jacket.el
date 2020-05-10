@@ -6,7 +6,7 @@
                   (insert-file-contents "data/j.sexp")
                   (buffer-string)))))
 
-(eval (the-NuVoc))
+(load "~/code/jdoc/NuVoc.el")
 
 (defun j-find-thing (thing)
   "Find information about thing (exact match)"

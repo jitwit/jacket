@@ -6,6 +6,7 @@
 
 (define jsoftware.com "https://code.jsoftware.com")
 (define data/Nuvoc "data/NuVoc")
+(define NuVoc.el "NuVoc.el")
 
 (define nuvoc
   (with-input-from-file data/Nuvoc
@@ -260,9 +261,9 @@
 
 ;;;; Dump information gleaned from nuvoc in s expression
 (define (dump-jdoc)
-  (when (file-exists? "data/j.sexp")
-    (delete-file "data/j.sexp"))
-  (with-output-to-file "data/j.sexp"
+  (when (file-exists? NuVoc.el)
+    (delete-file NuVoc.el))
+  (with-output-to-file NuVoc.el
     (lambda ()
       (write
        `(defvar j-nuvoc
