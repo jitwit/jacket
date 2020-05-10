@@ -22,7 +22,7 @@
            (sxpath '(// table))))
 
 (define jdoc-key
-  `(("#ffffff" . Comment)
+  `(("#ffffff" . Comment) ; not in table
     ,@(filter-map (lambda (x)
                     (match x
                       (`(td (@ (style ,css)) ,blah)
@@ -88,9 +88,11 @@
     (`(td (@ . ,atts) .
           ,blah)
      `(td ,@(filter (lambda (b)
-                      (not (or (equal? b '(*text* "  "))
-                               (equal? b '(*text* "\n"))
-                               (equal? b '(*text* ", ")))))
+                      (not (member b '((*text* "  ")
+                                       (*text* "\n")
+                                       (*text* ", ")
+                                       (*text* " ")
+                                       (*text* "•\n")))))
                     blah)))
     (_ td)))
 
@@ -106,8 +108,8 @@
     (`(@ . ,as)
      `(about ;; mild danger in assuming cdr
        (url ,@(cdr (assq 'href as)))
-       ,@bod))
-    (_ '(bug-parsea))))
+       (description ,@bod)))
+    (_ '(bug-parse-a))))
 
 (define (parse2 nodes)
   (pre-post-order
@@ -122,7 +124,7 @@
 ;;;; Pass 3. Clean up more random stuff and organize
 (define (clean-identifier speech . ids)
   (cons speech (filter-map (lambda (id)
-                             (and (not (member id '("\n" " " " to ")))
+                             (and (not (member id '("\n" " " " to " " \n")))
                                   (match id
                                     (`(tt ,id) `(j-token ,id))
                                     (_ id))))
@@ -137,6 +139,31 @@
               (cons (cdr speech) clean-identifier))
             jdoc-key))))
 
+;;;; Pass 4. Clean up more random stuff and organize
+;; char " " determins if tt thing describes rank
+;; space . seeems to imply a name
+;; (define (tt->rank tt . ))
+(define (monad-rank-desc? desc)
+  (member desc '("0" "1" "2" "_" "mu")))
+
+(define (dyad-rank-desc? desc)
+  (string-contains? desc " "))
+
+(define (tt->rank . t)
+  (match t
+    (`(tt ,(? monad-rank-desc? xs))
+     `(monad-rank ,xs))
+    (`(tt ,(? dyad-rank-desc? xs))
+     `(dyad-rank ,xs))
+    (_ t)))
+
+(define (parse4 nodes)
+  ((sxml:modify '("//td" delete-undeep))
+   (pre-post-order
+    nodes
+    `((*text* . ,(lambda (_ x) x))
+      (*default* . ,(lambda x x))
+      (tt . ,tt->rank)))))
 
 (define (dump-jdoc)
   (when (file-exists? "data/jdoc")
@@ -146,5 +173,5 @@
       (pretty-print ((compose parse2 parse1) nuvoc)))))
 
 (define parse
-  (compose parse3 parse2 parse1))
+  (compose parse4 parse3 parse2 parse1))
 
