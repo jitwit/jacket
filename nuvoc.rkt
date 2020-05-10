@@ -2,12 +2,10 @@
 
 (require html-parsing
          sxml/sxpath
-         sxml
-         webscraperhelper)
+         sxml)
 
 (define jsoftware.com "https://code.jsoftware.com")
-(define data/Nuvoc "data/Nuvoc")
-(define data/jdoc "data/jdoc")
+(define data/Nuvoc "data/NuVoc")
 
 (define nuvoc
   (with-input-from-file data/Nuvoc
@@ -204,7 +202,7 @@
        (info (valence dyad) (rank ,un) ,@i1)
        (info (valence dyad) (rank ,mn) ,@i2)
        (info (valence dyad) (rank ,uv) ,@i3)))
-        ;;    ;; ^:
+    ;; ^:
     (`((monad-rank ,mr) (info . ,info) (dyad-rank ,dr) ,op (info . ,i1) (info . ,i2) (info . ,i3) ,cp)
      `((info (valence monad) (rank ,mr) ,@info)
        (info (valence dyad) (rank ,dr) ,@i1)
@@ -244,13 +242,30 @@
      (*default* . ,(lambda x x))
      (J . ,join-info))))
 
-(define (dump-jdoc)
-  (when (file-exists? "data/jdoc")
-    (delete-file "data/jdoc"))
-  (with-output-to-file "data/jdoc"
-    (lambda ()
-      (pretty-print ((compose parse2 parse1) nuvoc)))))
+;;;; Pass 6. fill urls, delete-undeep some tags
+(define (fill-url a url)
+  `(,a ,(string-append jsoftware.com url)))
 
+(define (parse6 nodes)
+  (pre-post-order
+   ((sxml:modify '("//j-token" delete-undeep))
+    nodes)
+   `((*text* . ,(lambda (_ x) x))
+     (*default* . ,(lambda x x))
+     (url . ,fill-url))))
+
+;;;; Parse the nuvoc
 (define parse
-  (compose parse5 parse4 parse3 parse2 parse1))
+  (compose parse6 parse5 parse4 parse3 parse2 parse1))
 
+;;;; Dump information gleaned from nuvoc in s expression
+(define (dump-jdoc)
+  (when (file-exists? "data/j.sexp")
+    (delete-file "data/j.sexp"))
+  (with-output-to-file "data/j.sexp"
+    (lambda ()
+      (write
+       `(defvar j-nuvoc "The J NuVoc" ',(cdr (parse nuvoc)))))))
+
+
+(dump-jdoc)
