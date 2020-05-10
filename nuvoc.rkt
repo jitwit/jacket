@@ -5,11 +5,11 @@
          sxml)
 
 (define jsoftware.com "https://code.jsoftware.com")
-(define data/Nuvoc "data/NuVoc")
+(define NuVoc.html "NuVoc.html")
 (define NuVoc.el "NuVoc.el")
 
 (define nuvoc
-  (with-input-from-file data/Nuvoc
+  (with-input-from-file NuVoc.html
     (lambda ()
       (html->xexp (current-input-port)))))
 

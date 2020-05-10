@@ -4,10 +4,10 @@ nuvoc-url:= https://code.jsoftware.com/wiki/NuVoc
 
 default : NuVoc.el
 
-data/NuVoc :
+NuVoc.html :
 	$(jconsole) -js "require 'web/gethttp'" "exit '-o $@' gethttp '$(nuvoc-url)'"
 
-NuVoc.el : nuvoc.rkt data/NuVoc
+NuVoc.el : nuvoc.rkt NuVoc.html
 	$(racket) $<
 
 clean :

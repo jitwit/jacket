@@ -6,7 +6,7 @@
                   (insert-file-contents "data/j.sexp")
                   (buffer-string)))))
 
-(require 'NuVoc "~/code/jdoc/NuVoc.el")
+(require 'NuVoc "~/code/jacket/NuVoc.el")
 (require 'popup)
 (require 'browse-url)
 
@@ -45,5 +45,11 @@
 
 (joogle "^:")
 (j-urls "o.")
+
+(defvar jacket-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c j g") 'joogle)
+    map)
+  "Jacket Keymap")
 
 (provide 'jacket)
