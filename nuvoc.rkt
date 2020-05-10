@@ -265,7 +265,9 @@
   (with-output-to-file "data/j.sexp"
     (lambda ()
       (write
-       `(defvar j-nuvoc "The J NuVoc" ',(cdr (parse nuvoc)))))))
+       `(defvar j-nuvoc
+          ',(cdr (parse nuvoc))
+          "The J NuVoc")))))
 
 
 (dump-jdoc)
