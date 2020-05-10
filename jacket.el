@@ -6,7 +6,9 @@
                   (insert-file-contents "data/j.sexp")
                   (buffer-string)))))
 
-(load "~/code/jdoc/NuVoc.el")
+(require 'NuVoc "~/code/jdoc/NuVoc.el")
+(require 'popup)
+(require 'browse-url)
 
 (defun j-find-thing (thing)
   "Find information about thing (exact match)"
@@ -21,17 +23,27 @@
     (if entity
         (seq-map #'(lambda (info)
                      ;; guaranteed fields
-                     (cons (cadr (assoc 'description (cdr info)))
-                           (cdr (assoc 'url (cdr info)))))
+                     (append (cdr (assoc 'description (cdr info)))
+                             (cdr (assoc 'url (cdr info)))))
                  (seq-filter #'(lambda (kv)
                                  (equal (car kv) 'info))
                              (cdr entity)))
-      'thing-not-found)))
+      nil)))
 
 (defun j-names (thing)
   "Look up english names for thing"
   (seq-map #'car (j-urls thing)))
 
-(j-urls "~.")
-(j-names "%.")
+(defun joogle (thing)
+  "Present a popup with links to information about thing"
+  (interactive)
+  (let ((urls (seq-map #'(lambda (url)
+                           (popup-make-item (seq-elt url 0) :value (seq-elt url 1)))
+                       (j-urls thing))))
+    (when urls
+      (browse-url (popup-menu* urls)))))
 
+(joogle "^:")
+(j-urls "o.")
+
+(provide 'jacket)

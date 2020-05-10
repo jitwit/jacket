@@ -268,7 +268,9 @@
       (write
        `(defvar j-nuvoc
           ',(cdr (parse nuvoc))
-          "The J NuVoc")))))
+          "The J NuVoc"))
+      (newline)
+      (write '(provide 'NuVoc)))))
 
 
 (dump-jdoc)
