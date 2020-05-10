@@ -175,16 +175,41 @@
     ('Adverb `(J ,speech ,@(join-info* about)))
     (_ `(J ,speech ,@about))))
 
+;; issues '"(' <= ?. and ^:
+;; issues '" (' <= " and :
 (define (join-info* about)
   (match about
+    ;; these catch all but ?. ^: " : ^ |. and control
     (`((monad-rank ,mr) (info . ,mi) (info . ,di) (dyad-rank ,dr))
      `((info (valence monad) (rank ,mr) ,@mi)
        (info (valence dyad) (rank ,dr) ,@di)))
     (`((monad-rank ,mr) (info . ,i) (dyad-rank ,dr))
      `((info (valence monad) (rank ,mr) ,@i)
        (info (valence dyad) (rank ,dr) ,@i)))
+    (`((tt ,mr) (info . ,i) (dyad-rank ,dr))
+     `((info (valence dyad) (rank ,mr ,dr) ,@i)))
     (`((monad-rank ,mr) (info . ,i))
      `((info (valence monad) (rank ,mr) ,@i)))
+    ;; "
+    (`(,info ,op (tt ,un) (info . ,i1) (tt ,mn) (info . ,i2) " , " (tt ,uv) (info . ,i3) ,cp)
+     `(,info
+       (info (valence dyad) (rank ,un) ,@i1)
+       (info (valence dyad) (rank ,mn) ,@i2)
+       (info (valence dyad) (rank ,uv) ,@i3)))
+    ;; ^:
+    (`((monad-rank ,mr) (info . ,info) (dyad-rank ,dr) ,op (info . ,i1) (info . ,i2) (info . ,i3) ,cp)
+     `((info (valence monad) (rank ,mr) ,@info)
+       (info (valence dyad) (rank ,dr) ,@i1)
+       (info (valence dyad) (rank ,dr) ,@i2)
+       (info (valence dyad) (rank ,dr) ,@i3)))
+    ;; ?.
+    (`((monad-rank ,mr) (info ,url1 (description ,d1)) (info ,url2 (description ,d2)) (dyad-rank ,dr) ,seed)
+     `((info (valence monad) (rank ,mr) ,url1 (description ,(string-trim (string-append d1 seed))))
+       (info (valence dyad)  (rank ,dr) ,url2 (description ,(string-trim (string-append d2 seed))))))
+    ;; :
+    (`(,i1 ,op ,i2 ,i3 ,i4 ,cp)
+     `(,i1 ,i2 ,i3 ,i4))
+    ;; todo ^ |.
     (_ about)))
 
 (define (parse5 nodes)
@@ -193,6 +218,7 @@
    `((*text* . ,(lambda (_ x) x))
      (*default* . ,(lambda x x))
      (J . ,join-info))))
+
 
 (define (dump-jdoc)
   (when (file-exists? "data/jdoc")
